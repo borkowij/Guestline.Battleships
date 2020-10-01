@@ -61,6 +61,39 @@
             _boardService.Received(1).AddShip(Arg.Any<IEnumerable<Coordinates>>());
         }
 
+        [Test]
+        public void Initialize_WhenCouldntGenerateShipsCoordinates_ShouldReturnFalse()
+        {
+            _shipsCoordinatesGenerator.Generate(
+                Arg.Any<IEnumerable<ShipConfiguration>>(),
+                Arg.Any<int>(),
+                Arg.Any<int>()).Returns(Result<List<List<Coordinates>>>.Error());
+
+            var result = _game.Initialize(_gameConfiguration);
+
+            Assert.False(result);
+        }
+
+        [Test]
+        public void Initialize_WhenCouldntAddShip_ShouldReturnFalse()
+        {
+            _boardService.AddShip(Arg.Any<IEnumerable<Coordinates>>()).Returns(false);
+
+            var result = _game.Initialize(_gameConfiguration);
+
+            Assert.False(result);
+        }
+
+        [Test]
+        public void Initialize_WhenAllShipsAdded_ShouldReturnTrue()
+        {
+            _boardService.AddShip(Arg.Any<IEnumerable<Coordinates>>()).Returns(true);
+
+            var result = _game.Initialize(_gameConfiguration);
+
+            Assert.True(result);
+        }
+
         [TestCase(true)]
         [TestCase(false)]
         public void IsOver_ShouldReturnProperValue(bool anyShipAlive)

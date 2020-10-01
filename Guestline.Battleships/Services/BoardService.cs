@@ -26,7 +26,7 @@
         {
             var ship = _board.GetByCoordinates(coordinates);
 
-            return ship == null ? AttackResult.Miss : ship.Damage(coordinates);
+            return ship?.Damage(coordinates) ?? AttackResult.Miss;
         }
 
         public bool AnyShipAlive()
