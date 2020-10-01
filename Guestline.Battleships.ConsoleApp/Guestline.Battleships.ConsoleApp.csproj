@@ -5,4 +5,8 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Guestline.Battleships\Guestline.Battleships.csproj" />
+  </ItemGroup>
+
 </Project>
