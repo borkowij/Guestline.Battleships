@@ -24,11 +24,6 @@
                 throw new ArgumentOutOfRangeException(nameof(height), "Board height must be a positive number");
             }
 
-            if (shipsConfigurations == null)
-            {
-                throw new ArgumentNullException(nameof(shipsConfigurations));
-            }
-
             if (shipsConfigurations.Count == 0)
             {
                 throw new ArgumentException("At least one ship is required in game configuration", nameof(shipsConfigurations));

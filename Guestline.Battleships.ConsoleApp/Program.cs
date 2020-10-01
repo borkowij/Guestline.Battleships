@@ -15,7 +15,7 @@
         {
             new ShipConfiguration(4),
             new ShipConfiguration(4),
-            new ShipConfiguration(10)
+            new ShipConfiguration(5)
         };
 
         static void Main()
