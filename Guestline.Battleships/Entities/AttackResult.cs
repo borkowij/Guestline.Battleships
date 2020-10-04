@@ -1,4 +1,4 @@
-﻿namespace Guestline.Battleships.Models
+﻿namespace Guestline.Battleships.Entities
 {
     public enum AttackResult
     {

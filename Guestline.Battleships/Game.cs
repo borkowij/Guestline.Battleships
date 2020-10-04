@@ -1,55 +1,83 @@
 ﻿namespace Guestline.Battleships
 {
-    using Models;
+    using System.Collections.Generic;
+    using System.Linq;
 
-    using Services;
+    using Common;
+
+    using Configuration;
+
+    using Entities;
+
+    using Interfaces;
 
     public class Game
     {
-        private readonly IBoardService _boardService;
-        private readonly IShipsCoordinatesGenerator _shipsCoordinatesGenerator;
+        private readonly IAttackingService _attackingService;
+        private readonly Board _board;
+        private readonly List<(Coordinates Coordinates, AttackResult Result)> _attackResultHistory;
 
-        public Game(IBoardService boardService, IShipsCoordinatesGenerator shipsCoordinatesGenerator)
+        public Game(IAttackingService attackingService, Board board)
         {
-            _boardService = boardService;
-            _shipsCoordinatesGenerator = shipsCoordinatesGenerator;
+            _attackingService = attackingService;
+            _board = board;
+            _attackResultHistory = new List<(Coordinates Coordinates, AttackResult Result)>();
         }
 
-        public bool Initialize(GameConfiguration gameConfiguration)
+        public Result<AttackResult> Attack(Coordinates coordinates)
         {
-            var shipsCoordinatesGenerationResult = _shipsCoordinatesGenerator.Generate(
-                gameConfiguration.ShipsConfigurations,
-                gameConfiguration.Width,
-                gameConfiguration.Height);
-
-            if (!shipsCoordinatesGenerationResult.IsSuccess)
+            if (!_board.ValidateCoordinates(coordinates))
             {
-                return false;
+                return Result<AttackResult>.Error();
             }
 
-            _boardService.ClearBoard();
+            var result = _attackingService.AttackCoordinates(_board, coordinates);
+            _attackResultHistory.Add((coordinates, result));
 
-            foreach (var shipCoordinates in shipsCoordinatesGenerationResult.Value)
-            {
-                if (!_boardService.AddShip(shipCoordinates))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        public AttackResult Attack(Coordinates coordinates)
-        {
-            var result = _boardService.AttackCoordinates(coordinates);
-
-            return result;
+            return Result<AttackResult>.Success(result);
         }
 
         public bool IsOver()
         {
-            return !_boardService.AnyShipAlive();
+            return !_board.AnyShipAlive();
+        }
+
+        public AttackResult?[,] GetAttackResultsTable()
+        {
+            var result = new AttackResult?[_board.Width, _board.Height];
+            foreach (var (coordinates, attackResult) in _attackResultHistory)
+            {
+                result[coordinates.X, coordinates.Y] = attackResult;
+            }
+
+            return result;
+        }
+
+        public static Result<Game> Initialize(
+            IBoardFactory boardFactory,
+            IAttackingService attackingService,
+            BoardConfiguration boardConfiguration)
+        {
+            var createBoardResult = boardFactory.Create(boardConfiguration);
+
+            if (createBoardResult.IsSuccess)
+            {
+                return Result<Game>.Success(new Game(attackingService, createBoardResult.Value));
+            }
+
+            return Result<Game>.Error();
+        }
+
+        private static List<List<AttackResult?>> PrepareAttackResultTable(int width, int height)
+        {
+            var result = new List<List<AttackResult?>>();
+
+            for (var i = 0; i < height; i++)
+            {
+                result.Add(Enumerable.Repeat((AttackResult?)null, width).ToList());
+            }
+
+            return result;
         }
     }
 }

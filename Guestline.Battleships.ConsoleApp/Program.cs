@@ -3,7 +3,9 @@
     using System;
     using System.Collections.Generic;
 
-    using Models;
+    using Configuration;
+
+    using Entities;
 
     using Services;
 
@@ -30,24 +32,23 @@
 
         private static bool TryInitializeGame(out Game game)
         {
-            var boardStorage = new BoardStorage();
-            var boardService = new BoardService(boardStorage);
-            var shipCoordinatesGenerator = new RandomShipsCoordinatesGenerator(1000);
-
-            var newGame = new Game(boardService, shipCoordinatesGenerator);
+            var shipFactory = new ShipFactory();
+            var shipCoordinatesGenerator = new ShipCoordinatesGenerator();
+            var boardFactory = new BoardFactory(shipFactory, shipCoordinatesGenerator, 1000);
+            var attackingService = new AttackingService();
 
             while (true)
             {
-                var gameConfiguration = new GameConfiguration(BoardWidth, BoardHeight, ShipsConfigurations);
-                var initializationSucceeded = newGame.Initialize(gameConfiguration);
+                var boardConfiguration = new BoardConfiguration(BoardWidth, BoardHeight, ShipsConfigurations);
+                var result = Game.Initialize(boardFactory, attackingService, boardConfiguration);
 
-                if (initializationSucceeded)
+                if (result.IsSuccess)
                 {
-                    game = newGame;
+                    game = result.Value;
                     return true;
                 }
 
-                Console.WriteLine("Failed to initialize game. Press 'Y' for retry.");
+                Console.WriteLine("Failed to initialize the board. Press 'Y' for retry.");
 
                 if (Console.ReadKey(true).Key != ConsoleKey.Y)
                 {
@@ -63,32 +64,47 @@
         private static void Play(Game game)
         {
             var currentTurn = 0;
-            var boardVisualizer = new BoardVisualizer(BoardWidth, BoardHeight);
-            boardVisualizer.Display(Console.Out);
+            var boardVisualizer = new BoardVisualizer();
 
             do
             {
-                Console.Write($"Turn {currentTurn}: ");
+                boardVisualizer.Display(Console.Out, game.GetAttackResultsTable());
 
-                var input = Console.ReadLine();
+                TakeTurn(game, currentTurn);
 
-                if (!Coordinates.TryParse(input, BoardWidth, BoardHeight, out var coordinates))
-                {
-                    Console.WriteLine("Invalid coordinates. Please try again. First symbol must be a letter followed be a number.");
-                    continue;
-                }
-
-                var attackResult = game.Attack(coordinates);
-                boardVisualizer.SaveAttackResult(coordinates, attackResult);
-
-                Console.Clear();
-                boardVisualizer.Display(Console.Out);
-                Console.WriteLine($"Turn {currentTurn}: {input} - {attackResult.ToString()}");
                 currentTurn++;
             } while (!game.IsOver());
 
             Console.WriteLine("Game over");
             Console.ReadKey();
+        }
+
+        private static void TakeTurn(Game game, int currentTurn)
+        {
+            while (true)
+            {
+                Console.Write($"Turn {currentTurn}: ");
+
+                var input = Console.ReadLine();
+                if (!Coordinates.TryParse(input, out var coordinates))
+                {
+                    Console.WriteLine(
+                        $"Invalid coordinates. Please try again. First symbol must be a letter followed be a number.{Environment.NewLine}");
+                    continue;
+                }
+
+                var attackResult = game.Attack(coordinates);
+
+                if (!attackResult.IsSuccess)
+                {
+                    Console.WriteLine($"Invalid coordinates. Please try again. Coordinates cannot exceed board size.{Environment.NewLine}");
+                    continue;
+                }
+
+                Console.WriteLine($"{attackResult.Value.ToString()}{Environment.NewLine}");
+
+                return;
+            }
         }
     }
 }

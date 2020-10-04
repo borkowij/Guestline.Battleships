@@ -1,6 +1,6 @@
-namespace Guestline.Battleships.Tests.Models
+namespace Guestline.Battleships.Tests.Entities
 {
-    using Battleships.Models;
+    using Battleships.Entities;
 
     using NUnit.Framework;
 
@@ -33,11 +33,8 @@ namespace Guestline.Battleships.Tests.Models
         [Test]
         public void TryParse_WhenLowercaseOrUppercaseInput_ShouldReturnSameCoordinates()
         {
-            var boardWidth = 2;
-            var boardHeight = 3;
-
-            var lowerCaseResult = Coordinates.TryParse("b1", boardWidth, boardHeight, out var lowerCaseCoordinates);
-            var upperCaseResult = Coordinates.TryParse("B1", boardWidth, boardHeight, out var upperCaseCoordinates);
+            var lowerCaseResult = Coordinates.TryParse("b1", out var lowerCaseCoordinates);
+            var upperCaseResult = Coordinates.TryParse("B1", out var upperCaseCoordinates);
 
             Assert.True(lowerCaseResult);
             Assert.True(upperCaseResult);
@@ -51,10 +48,7 @@ namespace Guestline.Battleships.Tests.Models
         [TestCase("C1", 1, 2)]
         public void TryParse_WhenValidInput_ShouldReturnTrueWithProperCoordinates(string input, int x, int y)
         {
-            var boardWidth = 2;
-            var boardHeight = 3;
-
-            var result = Coordinates.TryParse(input, boardWidth, boardHeight, out var coordinates);
+            var result = Coordinates.TryParse(input, out var coordinates);
 
             Assert.True(result);
             Assert.AreEqual(x, coordinates.X);
@@ -68,24 +62,7 @@ namespace Guestline.Battleships.Tests.Models
         [TestCase("")]
         public void TryParse_WhenInvalidInput_ShouldReturnFalseWithNoCoordinates(string input)
         {
-            var boardWidth = 2;
-            var boardHeight = 3;
-
-            var result = Coordinates.TryParse(input, boardWidth, boardHeight, out var coordinates);
-
-            Assert.False(result);
-            Assert.IsNull(coordinates);
-        }
-
-        [TestCase("D0")]
-        [TestCase("A3")]
-        [TestCase("D3")]
-        public void TryParse_WhenCoordinatesExceedBoardSize_ShouldReturnFalseWithNoCoordinates(string input)
-        {
-            var boardWidth = 2;
-            var boardHeight = 3;
-
-            var result = Coordinates.TryParse(input, boardWidth, boardHeight, out var coordinates);
+            var result = Coordinates.TryParse(input,  out var coordinates);
 
             Assert.False(result);
             Assert.IsNull(coordinates);

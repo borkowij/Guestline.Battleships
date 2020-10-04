@@ -2,8 +2,13 @@
 {
     using System.Collections.Generic;
 
-    using Battleships.Models;
-    using Battleships.Services;
+    using Battleships.Entities;
+
+    using Common;
+
+    using Configuration;
+
+    using Interfaces;
 
     using NSubstitute;
 
@@ -11,112 +16,158 @@
 
     public class GameTests
     {
+        private readonly BoardConfiguration _boardConfiguration = new BoardConfiguration(
+            10,
+            10,
+            new List<ShipConfiguration>
+            {
+                new ShipConfiguration(2)
+            });
+
+        private Ship _ship;
+        private Board _board;
+
         private Game _game;
-        private IBoardService _boardService;
-        private IShipsCoordinatesGenerator _shipsCoordinatesGenerator;
-        private GameConfiguration _gameConfiguration;
+
+        private IAttackingService _attackingService;
+        private IBoardFactory _boardFactory;
 
         [SetUp]
         public void Setup()
         {
-            _gameConfiguration = new GameConfiguration(
-                10,
-                10,
-                new List<ShipConfiguration>
+            _attackingService = Substitute.For<IAttackingService>();
+            _boardFactory = Substitute.For<IBoardFactory>();
+
+            _ship = TestsHelper.CreateShip(2);
+
+            _board = new Board(
+                _boardConfiguration.BoardWidth,
+                _boardConfiguration.BoardHeight,
+                new List<Ship>
                 {
-                    new ShipConfiguration(4)
+                    _ship
                 });
 
-            _boardService = Substitute.For<IBoardService>();
-            _shipsCoordinatesGenerator = Substitute.For<IShipsCoordinatesGenerator>();
+            _boardFactory
+                .Create(Arg.Any<BoardConfiguration>())
+                .Returns(Result<Board>.Success(_board));
 
-            _game = new Game(_boardService, _shipsCoordinatesGenerator);
-
-            _shipsCoordinatesGenerator.Generate(Arg.Any<IEnumerable<ShipConfiguration>>(), Arg.Any<int>(), Arg.Any<int>())
-                .Returns(Result<List<List<Coordinates>>>.Success(new List<List<Coordinates>>(){
-                        new List<Coordinates>
-                        {
-                            new Coordinates(0,0),
-                            new Coordinates(1,0),
-                            new Coordinates(2,0),
-                            new Coordinates(3,0),
-                        }
-                    })
-            );
+            _game = Game.Initialize(_boardFactory, _attackingService, _boardConfiguration).Value;
         }
 
         [Test]
-        public void Initialize_ShouldClearBoard()
+        public void Initialize_WhenBoardCreated_ShouldReturnSuccess()
         {
-            _game.Initialize(_gameConfiguration);
+            _boardFactory
+                .Create(Arg.Any<BoardConfiguration>())
+                .Returns(Result<Board>.Success(_board));
 
-            _boardService.Received(1).ClearBoard();
+            var result = Game.Initialize(_boardFactory, _attackingService, _boardConfiguration);
+
+            Assert.True(result.IsSuccess);
         }
 
         [Test]
-        public void Initialize_ShouldPlaceShipsOnBoard()
+        public void Initialize_WhenFailedToCreateBoard_ShouldReturnFailed()
         {
-            _game.Initialize(_gameConfiguration);
+            _boardFactory
+                .Create(Arg.Any<BoardConfiguration>())
+                .Returns(Result<Board>.Error());
 
-            _boardService.Received(1).AddShip(Arg.Any<IEnumerable<Coordinates>>());
+            var result = Game.Initialize(_boardFactory, _attackingService, _boardConfiguration);
+
+            Assert.False(result.IsSuccess);
         }
 
         [Test]
-        public void Initialize_WhenCouldntGenerateShipsCoordinates_ShouldReturnFalse()
+        public void IsOver_WhenAnyShipIsAlive_ShouldReturnFalse()
         {
-            _shipsCoordinatesGenerator.Generate(
-                Arg.Any<IEnumerable<ShipConfiguration>>(),
-                Arg.Any<int>(),
-                Arg.Any<int>()).Returns(Result<List<List<Coordinates>>>.Error());
-
-            var result = _game.Initialize(_gameConfiguration);
+            var result = _game.IsOver();
 
             Assert.False(result);
         }
 
         [Test]
-        public void Initialize_WhenCouldntAddShip_ShouldReturnFalse()
+        public void IsOver_WhenNoShipsAlive_ShouldReturnTrue()
         {
-            _boardService.AddShip(Arg.Any<IEnumerable<Coordinates>>()).Returns(false);
+            foreach (var shipCoordinates in _ship.Coordinates)
+            {
+                _ship.Damage(shipCoordinates);
+            }
 
-            var result = _game.Initialize(_gameConfiguration);
-
-            Assert.False(result);
-        }
-
-        [Test]
-        public void Initialize_WhenAllShipsAdded_ShouldReturnTrue()
-        {
-            _boardService.AddShip(Arg.Any<IEnumerable<Coordinates>>()).Returns(true);
-
-            var result = _game.Initialize(_gameConfiguration);
+            var result = _game.IsOver();
 
             Assert.True(result);
         }
 
-        [TestCase(true)]
-        [TestCase(false)]
-        public void IsOver_ShouldReturnProperValue(bool anyShipAlive)
+        [Test]
+        public void GetAttackResultsTable_ShouldReturnTableTheSameSizeAsTheBoard()
         {
-            _boardService.AnyShipAlive().Returns(anyShipAlive);
+            var result = _game.GetAttackResultsTable();
 
-            var result = _game.IsOver();
+            Assert.AreEqual(_boardConfiguration.BoardWidth, result.GetLength(0));
+            Assert.AreEqual(_boardConfiguration.BoardHeight, result.GetLength(1));
+        }
 
-            Assert.AreEqual(!anyShipAlive, result);
+        [Test]
+        public void GetAttackResultsTable_WhenNoAttacksRecorded_ShouldReturnTableNoAttackResults()
+        {
+            var result = _game.GetAttackResultsTable();
+
+            foreach (var attackResultTableEntry in result)
+            {
+                Assert.IsNull(attackResultTableEntry);
+            }
         }
 
         [TestCase(AttackResult.Miss)]
         [TestCase(AttackResult.Hit)]
         [TestCase(AttackResult.Sink)]
-        public void Attack_ShouldReturnProperValue(AttackResult attackResult)
+        public void GetAttackResultsTable_WhenAttackRecorded_ShouldReturnTableWithProperAttackResults(AttackResult attackResult)
         {
-            _boardService.AttackCoordinates(Arg.Any<Coordinates>()).Returns(attackResult);
+            var coordinates = new Coordinates(2, 4);
+            _attackingService.AttackCoordinates(Arg.Any<Board>(), coordinates)
+                .Returns(attackResult);
+            _game.Attack(coordinates);
 
-            _game.Initialize(_gameConfiguration);
+            var result = _game.GetAttackResultsTable();
 
-            var result = _game.Attack(new Coordinates(0, 0));
+            for (var x = 0; x < result.GetLength(0); x++)
+            {
+                for (var y = 0; y < result.GetLength(1); y++)
+                {
+                    if (coordinates.X == x && coordinates.Y == y)
+                    {
+                        Assert.AreEqual(attackResult, result[x, y]);
+                    }
+                    else
+                    {
+                        Assert.IsNull(result[x, y]);
+                    }
+                }
+            }
+        }
 
-            Assert.AreEqual(attackResult, result);
+        [Test]
+        public void Attack_WhenInvalidCoordinates_ShouldReturnFailure()
+        {
+            var result = _game.Attack(new Coordinates(100, 100));
+
+            Assert.False(result.IsSuccess);
+        }
+
+        [TestCase(AttackResult.Miss)]
+        [TestCase(AttackResult.Hit)]
+        [TestCase(AttackResult.Sink)]
+        public void Attack_WhenValidCoordinates_ShouldReturnValueFromAttackingService(AttackResult attackResult)
+        {
+            _attackingService.AttackCoordinates(Arg.Any<Board>(), Arg.Any<Coordinates>())
+                .Returns(attackResult);
+
+            var result = _game.Attack(new Coordinates(0, 1));
+
+            Assert.True(result.IsSuccess);
+            Assert.AreEqual(attackResult, result.Value);
         }
     }
 }

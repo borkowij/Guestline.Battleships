@@ -1,4 +1,4 @@
-﻿namespace Guestline.Battleships.Models
+﻿namespace Guestline.Battleships.Entities
 {
     using System;
     using System.Text.RegularExpressions;
@@ -15,7 +15,7 @@
             Y = y;
         }
 
-        public static bool TryParse(string input, int boardWidth, int boardHeight, out Coordinates coordinates)
+        public static bool TryParse(string input, out Coordinates coordinates)
         {
             if (string.IsNullOrEmpty(input) || !Regex.IsMatch(input, "^[a-zA-Z][0-9]+$"))
             {
@@ -26,14 +26,8 @@
             var y = char.ToUpper(input[0]) - 65;
             var x = Convert.ToInt32(input.Substring(1));
 
-            if (x < boardWidth && y < boardHeight)
-            {
-                coordinates = new Coordinates(x, y);
-                return true;
-            }
-
-            coordinates = null;
-            return false;
+            coordinates = new Coordinates(x, y);
+            return true;
         }
 
         public override bool Equals(object obj)

@@ -2,7 +2,7 @@
 {
     using System.Collections.Generic;
 
-    using Battleships.Models;
+    using Battleships.Entities;
 
     public static class TestsHelper
     {
