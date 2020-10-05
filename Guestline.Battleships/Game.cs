@@ -1,7 +1,6 @@
 ﻿namespace Guestline.Battleships
 {
     using System.Collections.Generic;
-    using System.Linq;
 
     using Common;
 
@@ -17,7 +16,7 @@
         private readonly Board _board;
         private readonly List<(Coordinates Coordinates, AttackResult Result)> _attackResultHistory;
 
-        public Game(IAttackingService attackingService, Board board)
+        private Game(IAttackingService attackingService, Board board)
         {
             _attackingService = attackingService;
             _board = board;
@@ -66,18 +65,6 @@
             }
 
             return Result<Game>.Error();
-        }
-
-        private static List<List<AttackResult?>> PrepareAttackResultTable(int width, int height)
-        {
-            var result = new List<List<AttackResult?>>();
-
-            for (var i = 0; i < height; i++)
-            {
-                result.Add(Enumerable.Repeat((AttackResult?)null, width).ToList());
-            }
-
-            return result;
         }
     }
 }
