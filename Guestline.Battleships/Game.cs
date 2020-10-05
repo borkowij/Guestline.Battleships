@@ -14,26 +14,25 @@
     {
         private readonly IAttackingService _attackingService;
         private readonly Board _board;
-        private readonly List<(Coordinates Coordinates, AttackResult Result)> _attackResultHistory;
+        private readonly List<(Coordinates Coordinates, AttackResult Result)> _pastAttackResults;
 
         private Game(IAttackingService attackingService, Board board)
         {
             _attackingService = attackingService;
             _board = board;
-            _attackResultHistory = new List<(Coordinates Coordinates, AttackResult Result)>();
+            _pastAttackResults = new List<(Coordinates Coordinates, AttackResult Result)>();
         }
 
         public Result<AttackResult> Attack(Coordinates coordinates)
         {
-            if (!_board.ValidateCoordinates(coordinates))
+            var result = _attackingService.AttackCoordinates(_board, coordinates);
+
+            if (result.IsSuccess)
             {
-                return Result<AttackResult>.Error();
+                _pastAttackResults.Add((coordinates, result.Value));
             }
 
-            var result = _attackingService.AttackCoordinates(_board, coordinates);
-            _attackResultHistory.Add((coordinates, result));
-
-            return Result<AttackResult>.Success(result);
+            return result;
         }
 
         public bool IsOver()
@@ -44,7 +43,7 @@
         public AttackResult?[,] GetAttackResultsTable()
         {
             var result = new AttackResult?[_board.Width, _board.Height];
-            foreach (var (coordinates, attackResult) in _attackResultHistory)
+            foreach (var (coordinates, attackResult) in _pastAttackResults)
             {
                 result[coordinates.X, coordinates.Y] = attackResult;
             }

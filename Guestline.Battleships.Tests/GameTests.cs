@@ -127,7 +127,7 @@
         {
             var coordinates = new Coordinates(2, 4);
             _attackingService.AttackCoordinates(Arg.Any<Board>(), coordinates)
-                .Returns(attackResult);
+                .Returns(Result<AttackResult>.Success(attackResult));
             _game.Attack(coordinates);
 
             var result = _game.GetAttackResultsTable();
@@ -149,9 +149,12 @@
         }
 
         [Test]
-        public void Attack_WhenInvalidCoordinates_ShouldReturnFailure()
+        public void Attack_WhenAttackFailed_ShouldReturnFailure()
         {
-            var result = _game.Attack(new Coordinates(100, 100));
+            _attackingService.AttackCoordinates(Arg.Any<Board>(), Arg.Any<Coordinates>())
+                .Returns(Result<AttackResult>.Error());
+
+            var result = _game.Attack(new Coordinates(0, 1));
 
             Assert.False(result.IsSuccess);
         }
@@ -159,10 +162,10 @@
         [TestCase(AttackResult.Miss)]
         [TestCase(AttackResult.Hit)]
         [TestCase(AttackResult.Sink)]
-        public void Attack_WhenValidCoordinates_ShouldReturnValueFromAttackingService(AttackResult attackResult)
+        public void Attack_WhenAttackSuccedeed_ShouldReturnAttackResultFromAttackingService(AttackResult attackResult)
         {
             _attackingService.AttackCoordinates(Arg.Any<Board>(), Arg.Any<Coordinates>())
-                .Returns(attackResult);
+                .Returns(Result<AttackResult>.Success(attackResult));
 
             var result = _game.Attack(new Coordinates(0, 1));
 

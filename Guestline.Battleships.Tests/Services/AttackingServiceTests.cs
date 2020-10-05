@@ -32,11 +32,20 @@
         }
 
         [Test]
-        public void Attack_WhenShipIsHitAndAliveShouldReturnHit()
+        public void Attack_WhenInvalidCoordinates_ShouldReturnFailure()
+        {
+            var result = _attackingService.AttackCoordinates(_board, new Coordinates(100, 100));
+
+            Assert.False(result.IsSuccess);
+        }
+
+        [Test]
+        public void Attack_WhenShipIsHitAndAlive_ShouldReturnHit()
         {
             var result = _attackingService.AttackCoordinates(_board, _ship.Coordinates.First());
 
-            Assert.AreEqual(AttackResult.Hit, result);
+            Assert.IsTrue(result.IsSuccess);
+            Assert.AreEqual(AttackResult.Hit, result.Value);
         }
 
         [Test]
@@ -46,7 +55,8 @@
 
             var result = _attackingService.AttackCoordinates(_board, _ship.Coordinates.Last());
 
-            Assert.AreEqual(AttackResult.Sink, result);
+            Assert.IsTrue(result.IsSuccess);
+            Assert.AreEqual(AttackResult.Sink, result.Value);
         }
 
         [Test]
@@ -54,7 +64,8 @@
         {
             var result = _attackingService.AttackCoordinates(_board, new Coordinates(5, 5));
 
-            Assert.AreEqual(AttackResult.Miss, result);
+            Assert.IsTrue(result.IsSuccess);
+            Assert.AreEqual(AttackResult.Miss, result.Value);
         }
     }
 }

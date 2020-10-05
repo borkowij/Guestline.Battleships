@@ -1,16 +1,22 @@
 ﻿namespace Guestline.Battleships.Services
 {
+    using Common;
     using Entities;
 
     using Interfaces;
 
     public class AttackingService : IAttackingService
     {
-        public AttackResult AttackCoordinates(Board board, Coordinates coordinates)
+        public Result<AttackResult> AttackCoordinates(Board board, Coordinates coordinates)
         {
+            if (!board.ValidateCoordinates(coordinates))
+            {
+                return Result<AttackResult>.Error();
+            }
+
             var ship = board.GetShipByCoordinates(coordinates);
 
-            return ship?.Damage(coordinates) ?? AttackResult.Miss;
+            return Result<AttackResult>.Success(ship?.Damage(coordinates) ?? AttackResult.Miss);
         }
     }
 }
