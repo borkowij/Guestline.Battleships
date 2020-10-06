@@ -1,8 +1,7 @@
 ﻿namespace Guestline.Battleships.Tests.Services
 {
     using Battleships.Entities;
-
-    using Interfaces;
+    using Battleships.Services;
 
     using NUnit.Framework;
 

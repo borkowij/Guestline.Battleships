@@ -1,9 +1,9 @@
-﻿namespace Guestline.Battleships.Interfaces
+﻿namespace Guestline.Battleships.Services
 {
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
-
     using Entities;
+    using Interfaces;
 
     public class AttackResultStorage : IAttackResultStorage
     {

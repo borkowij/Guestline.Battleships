@@ -36,14 +36,14 @@
 
         private void DisplayCellValue(TextWriter output, int x, int y, IReadOnlyDictionary<Coordinates, AttackResult> attackResults)
         {
-            var result = "o";
+            var value = "o";
 
             if (attackResults.TryGetValue(new Coordinates(x, y), out var attackResult))
             {
-                result = GetAttackResultDisplayValue(attackResult);
+                value = GetAttackResultDisplayValue(attackResult);
             }
 
-            output.WriteLine(result.PadLeft(3));
+            output.Write(value.PadLeft(3));
         }
 
         private string GetAttackResultDisplayValue(AttackResult attackResult)
