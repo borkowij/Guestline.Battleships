@@ -26,16 +26,17 @@
 
         private Ship _ship;
         private Board _board;
-
         private Game _game;
 
         private IAttackingService _attackingService;
+        private IAttackResultStorage _attackResultStorage;
         private IBoardFactory _boardFactory;
 
         [SetUp]
         public void Setup()
         {
             _attackingService = Substitute.For<IAttackingService>();
+            _attackResultStorage = Substitute.For<IAttackResultStorage>();
             _boardFactory = Substitute.For<IBoardFactory>();
 
             _ship = TestsHelper.CreateShip(2);
@@ -52,7 +53,7 @@
                 .Create(Arg.Any<BoardConfiguration>())
                 .Returns(Result<Board>.Success(_board));
 
-            _game = Game.Initialize(_boardFactory, _attackingService, _boardConfiguration).Value;
+            _game = Game.Initialize(_boardFactory, _attackingService, _attackResultStorage, _boardConfiguration).Value;
         }
 
         [Test]
@@ -62,7 +63,7 @@
                 .Create(Arg.Any<BoardConfiguration>())
                 .Returns(Result<Board>.Success(_board));
 
-            var result = Game.Initialize(_boardFactory, _attackingService, _boardConfiguration);
+            var result = Game.Initialize(_boardFactory, _attackingService, _attackResultStorage, _boardConfiguration);
 
             Assert.True(result.IsSuccess);
         }
@@ -74,7 +75,7 @@
                 .Create(Arg.Any<BoardConfiguration>())
                 .Returns(Result<Board>.Error());
 
-            var result = Game.Initialize(_boardFactory, _attackingService, _boardConfiguration);
+            var result = Game.Initialize(_boardFactory, _attackingService, _attackResultStorage, _boardConfiguration);
 
             Assert.False(result.IsSuccess);
         }
@@ -101,51 +102,20 @@
         }
 
         [Test]
-        public void GetAttackResultsTable_ShouldReturnTableTheSameSizeAsTheBoard()
+        public void GetAttackResults_ShouldPassValueFromAttackResultStorage()
         {
-            var result = _game.GetAttackResultsTable();
-
-            Assert.AreEqual(_boardConfiguration.BoardWidth, result.GetLength(0));
-            Assert.AreEqual(_boardConfiguration.BoardHeight, result.GetLength(1));
-        }
-
-        [Test]
-        public void GetAttackResultsTable_WhenNoAttacksRecorded_ShouldReturnTableNoAttackResults()
-        {
-            var result = _game.GetAttackResultsTable();
-
-            foreach (var attackResultTableEntry in result)
+            var expectedResult = new Dictionary<Coordinates, AttackResult>
             {
-                Assert.IsNull(attackResultTableEntry);
-            }
-        }
+                {new Coordinates(0,0), AttackResult.Hit },
+                {new Coordinates(1,0), AttackResult.Miss },
+                {new Coordinates(2,0), AttackResult.Sink }
+            };
 
-        [TestCase(AttackResult.Miss)]
-        [TestCase(AttackResult.Hit)]
-        [TestCase(AttackResult.Sink)]
-        public void GetAttackResultsTable_WhenAttackRecorded_ShouldReturnTableWithProperAttackResults(AttackResult attackResult)
-        {
-            var coordinates = new Coordinates(2, 4);
-            _attackingService.AttackCoordinates(Arg.Any<Board>(), coordinates)
-                .Returns(Result<AttackResult>.Success(attackResult));
-            _game.Attack(coordinates);
+            _attackResultStorage.GetAttackResults().Returns(expectedResult);
 
-            var result = _game.GetAttackResultsTable();
+            var result = _game.GetAttackResults();
 
-            for (var x = 0; x < result.GetLength(0); x++)
-            {
-                for (var y = 0; y < result.GetLength(1); y++)
-                {
-                    if (coordinates.X == x && coordinates.Y == y)
-                    {
-                        Assert.AreEqual(attackResult, result[x, y]);
-                    }
-                    else
-                    {
-                        Assert.IsNull(result[x, y]);
-                    }
-                }
-            }
+            Assert.AreEqual(expectedResult, result);
         }
 
         [Test]
@@ -171,6 +141,30 @@
 
             Assert.True(result.IsSuccess);
             Assert.AreEqual(attackResult, result.Value);
+        }
+
+        [Test]
+        public void Attack_WhenAttackFailed_ShouldNotSaveAttackResultInStorage()
+        {
+            _attackingService.AttackCoordinates(Arg.Any<Board>(), Arg.Any<Coordinates>())
+                .Returns(Result<AttackResult>.Error());
+
+            _game.Attack(new Coordinates(0, 1));
+
+            _attackResultStorage.DidNotReceive().SaveAttackResult(Arg.Any<Coordinates>(), Arg.Any<AttackResult>());
+        }
+
+        [Test]
+        public void Attack_WhenAttackSuccedeed_ShouldSaveAttackResultInStorage()
+        {
+            var coordinates = new Coordinates(5, 5);
+            var attackResult = AttackResult.Hit;
+            _attackingService.AttackCoordinates(Arg.Any<Board>(), Arg.Any<Coordinates>())
+                .Returns(Result<AttackResult>.Success(attackResult));
+
+            _game.Attack(coordinates);
+
+            _attackResultStorage.Received(1).SaveAttackResult(coordinates, attackResult);
         }
     }
 }

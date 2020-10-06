@@ -1,7 +1,6 @@
 ﻿namespace Guestline.Battleships
 {
     using System.Collections.Generic;
-
     using Common;
 
     using Configuration;
@@ -13,14 +12,14 @@
     public class Game
     {
         private readonly IAttackingService _attackingService;
+        private readonly IAttackResultStorage _attackResultStorage;
         private readonly Board _board;
-        private readonly List<(Coordinates Coordinates, AttackResult Result)> _pastAttackResults;
 
-        private Game(IAttackingService attackingService, Board board)
+        private Game(IAttackingService attackingService, IAttackResultStorage attackResultStorage, Board board)
         {
             _attackingService = attackingService;
+            _attackResultStorage = attackResultStorage;
             _board = board;
-            _pastAttackResults = new List<(Coordinates Coordinates, AttackResult Result)>();
         }
 
         public Result<AttackResult> Attack(Coordinates coordinates)
@@ -29,10 +28,15 @@
 
             if (result.IsSuccess)
             {
-                _pastAttackResults.Add((coordinates, result.Value));
+                _attackResultStorage.SaveAttackResult(coordinates, result.Value);
             }
 
             return result;
+        }
+
+        public IReadOnlyDictionary<Coordinates, AttackResult> GetAttackResults()
+        {
+            return _attackResultStorage.GetAttackResults();
         }
 
         public bool IsOver()
@@ -40,27 +44,17 @@
             return !_board.AnyShipAlive();
         }
 
-        public AttackResult?[,] GetAttackResultsTable()
-        {
-            var result = new AttackResult?[_board.Width, _board.Height];
-            foreach (var (coordinates, attackResult) in _pastAttackResults)
-            {
-                result[coordinates.X, coordinates.Y] = attackResult;
-            }
-
-            return result;
-        }
-
         public static Result<Game> Initialize(
             IBoardFactory boardFactory,
             IAttackingService attackingService,
+            IAttackResultStorage attackResultStorage,
             BoardConfiguration boardConfiguration)
         {
             var createBoardResult = boardFactory.Create(boardConfiguration);
 
             if (createBoardResult.IsSuccess)
             {
-                return Result<Game>.Success(new Game(attackingService, createBoardResult.Value));
+                return Result<Game>.Success(new Game(attackingService, attackResultStorage, createBoardResult.Value));
             }
 
             return Result<Game>.Error();

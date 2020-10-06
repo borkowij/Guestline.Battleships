@@ -6,7 +6,7 @@
     using Configuration;
 
     using Entities;
-
+    using Interfaces;
     using Services;
 
     class Program
@@ -22,12 +22,13 @@
 
         static void Main()
         {
-            if (!TryInitializeGame(out var game))
+            if (TryInitializeGame(out var game))
             {
-                return;
+                Play(game);
             }
 
-            Play(game);
+            Console.WriteLine("Game over");
+            Console.ReadKey();
         }
 
         private static bool TryInitializeGame(out Game game)
@@ -36,11 +37,12 @@
             var shipCoordinatesGenerator = new ShipCoordinatesGenerator();
             var boardFactory = new BoardFactory(shipFactory, shipCoordinatesGenerator, 1000);
             var attackingService = new AttackingService();
+            var attackResultStorage = new AttackResultStorage();
 
             while (true)
             {
                 var boardConfiguration = new BoardConfiguration(BoardWidth, BoardHeight, ShipsConfigurations);
-                var result = Game.Initialize(boardFactory, attackingService, boardConfiguration);
+                var result = Game.Initialize(boardFactory, attackingService, attackResultStorage, boardConfiguration);
 
                 if (result.IsSuccess)
                 {
@@ -52,9 +54,6 @@
 
                 if (Console.ReadKey(true).Key != ConsoleKey.Y)
                 {
-                    Console.WriteLine("Game over");
-                    Console.ReadKey();
-
                     game = null;
                     return false;
                 }
@@ -66,17 +65,16 @@
             var currentTurn = 0;
             var boardVisualizer = new BoardVisualizer();
 
+            boardVisualizer.Display(Console.Out, BoardWidth, BoardHeight, game.GetAttackResults());
+
             do
             {
-                boardVisualizer.Display(Console.Out, game.GetAttackResultsTable());
-
                 TakeTurn(game, currentTurn);
+
+                boardVisualizer.Display(Console.Out, BoardWidth, BoardHeight, game.GetAttackResults());
 
                 currentTurn++;
             } while (!game.IsOver());
-
-            Console.WriteLine("Game over");
-            Console.ReadKey();
         }
 
         private static void TakeTurn(Game game, int currentTurn)

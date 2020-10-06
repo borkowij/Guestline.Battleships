@@ -6,7 +6,6 @@
     using Battleships.Entities;
 
     using NUnit.Framework;
-    using NUnit.Framework.Internal;
 
     public class BoardTests
     {

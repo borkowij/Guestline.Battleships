@@ -5,9 +5,9 @@
 
     public class Board
     {
-        public int Width { get; }
+        private int Width { get; }
 
-        public int Height { get; }
+        private int Height { get; }
 
         private readonly List<Ship> _ships;
 
